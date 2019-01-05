@@ -1,3 +1,8 @@
+# Copyright © 2018
+# Author: Robert Rakhmatullin.
+# Contacts: <robertbg4@gmail.com>
+# License: http://opensource.org/licenses/MIT
+
 import os
 import logging
 
