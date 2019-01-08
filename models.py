@@ -1,3 +1,4 @@
+import os
 import logging
 import datetime
 
@@ -5,12 +6,15 @@ import geocoder
 import telegram
 from peewee import *
 
-db = SqliteDatabase('bot.db')
+db = SqliteDatabase(os.getenv('DATABASE_PATH'))
 logger = logging.getLogger()
 
 class BaseModel(Model):
     class Meta:
         database = db
+
+def create_tables():
+    db.create_tables(BaseModel.__subclasses__())
 
 class User(BaseModel):
     telegram_id = IntegerField(primary_key=True)
@@ -65,16 +69,22 @@ class Post(BaseModel):
     place = CharField(null=True)
 
     def create_keyboard(self, symbols):
+        InlineButton.delete().where(
+            InlineButton.id.in_(self.buttons)).execute()
         for symbol in symbols:
-            InlineButton.create(symbol=symbol, post=self)
+            self.add_button(symbol)
         logger.info(f'Keyboard with symbols {symbols} created to {self}')
+
+    def add_button(self, symbol):
+        InlineButton.create(symbol=symbol, post=self)
+        logger.info(f'Button {symbol} added to {self}')
 
     def vote(self, symbol, user):
         button = self.buttons.where(InlineButton.symbol == symbol).get()
         button.voters.add(user)
         logger.info(f'{user} voted {symbol} to {self}')
 
-    def set_tg_location(self, location: telegram.Location):
+    def set_location_from_tg(self, location: telegram.Location):
         self.latitude = location.latitude
         self.longitude = location.longitude
         geo = geocoder.yandex(
@@ -87,11 +97,33 @@ class Post(BaseModel):
     def location(self):
         return f'{self.latitude} {self.longitude}\n{self.place}'
 
+    @property
+    def keyboard(self):
+        if not self.buttons.count():
+            return None
+        tg_buttons = [telegram.InlineKeyboardButton(
+            text=button.symbol,
+            callback_data=button.id) for button in self.buttons]
+        # TODO: split list to matrix
+        return telegram.InlineKeyboardMarkup(inline_keyboard=[tg_buttons])
+
+    def send(self, bot, chat_id):
+        # TODO: don't send if this post already posted
+        message = bot.send_message(chat_id=chat_id,
+                                   text=self.text,
+                                   parse_mode='Markdown',
+                                   disable_notification=self.silent_mode,
+                                   reply_markup=self.keyboard)
+        self.posted = message.date
+
     def __str__(self):
         return self.text
 
 class InlineButton(BaseModel):
-    symbol = CharField()
+    '''
+        Model for reactions under post
+    '''
+    symbol = CharField(max_length=10)
     voters = ManyToManyField(User, backref='votes')
     post = ForeignKeyField(Post, backref='buttons')
 
