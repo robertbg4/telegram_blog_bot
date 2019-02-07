@@ -62,11 +62,13 @@ class Message(BaseModel):
 class Post(BaseModel):
     text = TextField(null=True)
     created = DateTimeField(default=datetime.datetime.now())
-    posted = DateTimeField(null=True)
+    message = ForeignKeyField(Message, backref='posts', null=True)
     silent_mode = BooleanField(default=True)
     latitude = FloatField(null=True)
     longitude = FloatField(null=True)
     place = CharField(null=True)
+    #TODO: only one post can be current
+    current = BooleanField(default=True)
 
     def create_keyboard(self, symbols):
         InlineButton.delete().where(
@@ -107,14 +109,22 @@ class Post(BaseModel):
         # TODO: split list to matrix
         return telegram.InlineKeyboardMarkup(inline_keyboard=[tg_buttons])
 
-    def send(self, bot, chat_id):
+    def send(self, bot, chat_id, posted):
+        text = self.text
+        if latitude and longitude:
+            text += f'\n{latitude} {longitude}'
+        if place:
+            text += f'\n{place}'
         # TODO: don't send if this post already posted
         message = bot.send_message(chat_id=chat_id,
-                                   text=self.text,
+                                   text=text,
                                    parse_mode='Markdown',
                                    disable_notification=self.silent_mode,
                                    reply_markup=self.keyboard)
-        self.posted = message.date
+        if posted:
+            self.message = message
+            self.current = False
+            self.save()
 
     def __str__(self):
         return self.text
