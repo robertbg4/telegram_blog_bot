@@ -3,14 +3,12 @@
 # Contacts: <robertbg4@gmail.com>
 # License: http://opensource.org/licenses/MIT
 
-import os
 import logging
 
 from telegram import ext
 from telegram import KeyboardButton, ReplyKeyboardMarkup
 
-from models import User, Message, Post
-
+from models import User, Message, Post, config
 
 def set_cancel_keyboard():
     cancel_button = KeyboardButton('Отмена')
@@ -94,7 +92,7 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     level=logging.INFO)
 logger = logging.getLogger()
-updater = ext.Updater(token=os.getenv('TELEGRAM_BOT_TOKEN'))
+updater = ext.Updater(token=config['main']['TELEGRAM_BOT_TOKEN'])
 dispatcher = updater.dispatcher
 robert_id = 102622698
 

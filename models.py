@@ -1,12 +1,15 @@
-import os
 import logging
 import datetime
 
 import geocoder
 import telegram
+import configparser
 from peewee import *
 
-db = SqliteDatabase(os.getenv('DATABASE_PATH'))
+config = configparser.RawConfigParser()
+config.read('config.ini')
+
+db = SqliteDatabase(config['main']['DATABASE_PATH'])
 logger = logging.getLogger()
 
 class BaseModel(Model):
