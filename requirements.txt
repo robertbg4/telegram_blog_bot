@@ -1,3 +1,4 @@
 geocoder==1.38.1
 peewee==3.8.0
 python-telegram-bot==11.1.0
+gunicorn==19.9.0
