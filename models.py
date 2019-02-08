@@ -96,6 +96,7 @@ class Post(BaseModel):
             [self.latitude, self.longitude],
             method='reverse')
         self.place = geo.description or geo.address
+        self.save()
         logger.info(f'Added location {self.place}')
 
     @property
@@ -125,8 +126,8 @@ class Post(BaseModel):
                                    disable_notification=self.silent_mode,
                                    reply_markup=self.keyboard)
         if posted:
-            self.message = message
-            query = Post.update(current=False).where(Post.current == True)
+            query = Post.update(current=False, message=message)\
+                        .where(Post.current == True)
             query.execute()
 
     def __str__(self):
