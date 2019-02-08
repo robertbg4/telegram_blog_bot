@@ -93,7 +93,7 @@ class Post(BaseModel):
             [self.latitude, self.longitude],
             method='reverse')
         self.place = geo.description or geo.address
-        logger.info(f'Added location {self.location}')
+        logger.info(f'Added location {self.place}')
 
     @property
     def location(self):
@@ -111,10 +111,10 @@ class Post(BaseModel):
 
     def send(self, bot, chat_id, posted):
         text = self.text
-        if latitude and longitude:
-            text += f'\n{latitude} {longitude}'
-        if place:
-            text += f'\n{place}'
+        if self.latitude and self.longitude:
+            text += f'\n\n{self.latitude} {self.longitude}'
+        if self.place:
+            text += f'\n{self.place}'
         # TODO: don't send if this post already posted
         message = bot.send_message(chat_id=chat_id,
                                    text=text,
@@ -123,8 +123,8 @@ class Post(BaseModel):
                                    reply_markup=self.keyboard)
         if posted:
             self.message = message
-            self.current = False
-            self.save()
+            query = Post.update(current=False).where(Post.current == True)
+            query.execute()
 
     def __str__(self):
         return self.text
