@@ -126,7 +126,8 @@ class Post(BaseModel):
                                    disable_notification=self.silent_mode,
                                    reply_markup=self.keyboard)
         if posted:
-            query = Post.update(current=False, message=message)\
+            query = Post.update(current=False,
+                                message=Message.get_from_tg(message))\
                         .where(Post.current == True)
             query.execute()
 
