@@ -100,6 +100,9 @@ def get_reaction(bot, update):
     message_id = callback.message.message_id
 
     message = Message.get_or_none(Message.message_id == message_id)
+    if not message:
+        callback.answer(text=f'You cannot vote before post')
+        return
     post = message.posts.first()
     button = post.buttons.where(InlineButton.id == callback.data).get()
 
