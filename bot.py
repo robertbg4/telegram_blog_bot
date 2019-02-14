@@ -8,7 +8,7 @@ import logging
 from telegram import ext
 from telegram import KeyboardButton, ReplyKeyboardMarkup
 
-from models import User, Message, Post, config
+from models import User, Message, Post, InlineButton, config
 
 def set_cancel_keyboard():
     cancel_button = KeyboardButton('Отмена')
@@ -84,11 +84,29 @@ def get_drafted_posts(bot, update):
 
 
 def get_message(bot, update):
+    post = Post.get_or_none(Post.current == True)
+    if post:
+        post.create_keyboard(update.message.text)
+        post.send(bot, update.message.chat_id, False)
+        update.message.reply_text(text=None, reply_markup=set_edit_keyboard())
+        return
     post = Post.create(text=update.message.text)
     logger.info(f'post created: {post}')
-    update.message.reply_text(text=post.text, 
-                              reply_markup=set_edit_keyboard(),
-                              parse_mode='Markdown')
+    post.send(bot, update.message.chat_id, False)
+    update.message.reply_text(text=None, reply_markup=set_edit_keyboard())
+
+def get_reaction(bot, update):
+    callback = update.callback_query
+    message_id = callback.message.message_id
+
+    message = Message.get_or_none(Message.message_id == message_id)
+    post = message.posts.first()
+    button = post.buttons.where(InlineButton.id == callback.data).get()
+
+    result = button.vote(User.get_from_tg(callback.from_user))
+
+    callback.answer(text=f'You {result} {button.symbol}')
+    callback.edit_message_reply_markup(reply_markup=post.keyboard)
 
 
 logging.basicConfig(
@@ -97,7 +115,7 @@ logging.basicConfig(
 logger = logging.getLogger()
 updater = ext.Updater(token=config['main']['TELEGRAM_BOT_TOKEN'])
 dispatcher = updater.dispatcher
-admin_id = config['main']['ADMIN_ID']
+admin_id = int(config['main']['ADMIN_ID'])
 if not admin_id:
     raise ValueError("Couldn't load without admin id")
 blog_id = config['main']['BLOG_ID']
@@ -117,6 +135,9 @@ dispatcher.add_handler(delete_command_handler)
 dispatcher.add_handler(send_command_handler)
 dispatcher.add_handler(draft_command_handler)
 dispatcher.add_handler(drafted_command_handler)
+
+callback_handler = ext.CallbackQueryHandler(get_reaction)
+dispatcher.add_handler(callback_handler)
 
 updater.start_polling(clean=True)
 

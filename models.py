@@ -84,11 +84,6 @@ class Post(BaseModel):
         InlineButton.create(symbol=symbol, post=self)
         logger.info(f'Button {symbol} added to {self}')
 
-    def vote(self, symbol, user):
-        button = self.buttons.where(InlineButton.symbol == symbol).get()
-        button.voters.add(user)
-        logger.info(f'{user} voted {symbol} to {self}')
-
     def set_location_from_tg(self, location: telegram.Location):
         self.latitude = location.latitude
         self.longitude = location.longitude
@@ -108,7 +103,7 @@ class Post(BaseModel):
         if not self.buttons.count():
             return None
         tg_buttons = [telegram.InlineKeyboardButton(
-            text=button.symbol,
+            text=f'{button.symbol} {button.count or ""}',
             callback_data=button.id) for button in self.buttons]
         # TODO: split list to matrix
         return telegram.InlineKeyboardMarkup(inline_keyboard=[tg_buttons])
@@ -145,6 +140,15 @@ class InlineButton(BaseModel):
     @property
     def count(self):
         return self.voters.count()
+
+    def vote(self, user):
+        if self.voters.filter(User.telegram_id == user.telegram_id).count():
+            self.voters.remove(user)
+            logger.info(f'{user} unvoted {self.symbol} to {self}')
+            return 'unvoted'
+        self.voters.add(user)
+        logger.info(f'{user} voted {self.symbol} to {self}')
+        return 'voted'
 
     def __str__(self):
         return f'{self.post} | {self.symbol}'
