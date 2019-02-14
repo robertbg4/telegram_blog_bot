@@ -37,7 +37,8 @@ def set_edit_keyboard():
 def add_location(bot, update):
     post = Post.get_or_none(Post.current == True)
     if not post:
-        update.message.reply_text(text='Пост не выбран. Пришли его или выбери из отложенных',
+        error_text = 'Пост не выбран. Пришли его или выбери из отложенных'
+        update.message.reply_text(text=error_text,
                                   reply_markup=set_drafted_keyboard())
         return
     post.set_location_from_tg(update.message.location)
@@ -47,10 +48,11 @@ def add_location(bot, update):
 def send_post(bot, update):
     post = Post.get_or_none(Post.current == True)
     if not post:
-        update.message.reply_text(text='Пост не выбран. Пришли его или выбери из отложенных',
+        error_text = 'Пост не выбран. Пришли его или выбери из отложенных'
+        update.message.reply_text(text=error_text,
                                   reply_markup=set_drafted_keyboard())
         return
-    post.send(bot, '@robert_blog', True)
+    post.send(bot, blog_id, True)
     logger.info(f'post sended: {post}')
     update.message.reply_text(text='Пост отправлен',
                               reply_markup=set_drafted_keyboard())
@@ -58,7 +60,8 @@ def send_post(bot, update):
 def delete_post(bot, update):
     post = Post.get_or_none(Post.current == True)
     if not post:
-        update.message.reply_text(text='Пост не выбран. Пришли его или выбери из отложенных',
+        error_text = 'Пост не выбран. Пришли его или выбери из отложенных'
+        update.message.reply_text(text=error_text,
                                   reply_markup=set_drafted_keyboard())
         return
     post.delete_instance()
@@ -94,10 +97,15 @@ logging.basicConfig(
 logger = logging.getLogger()
 updater = ext.Updater(token=config['main']['TELEGRAM_BOT_TOKEN'])
 dispatcher = updater.dispatcher
-robert_id = 102622698
+admin_id = config['main']['ADMIN_ID']
+if not admin_id:
+    raise ValueError("Couldn't load without admin id")
+blog_id = config['main']['BLOG_ID']
+if not blog_id:
+    raise ValueError("Couldn't load without blog id")
 
-message_handler = ext.MessageHandler(ext.filters.MergedFilter(base_filter=ext.Filters.user(robert_id), and_filter=ext.Filters.text), get_message)
-location_handler = ext.MessageHandler(ext.filters.MergedFilter(base_filter=ext.Filters.user(robert_id), and_filter=ext.Filters.location), add_location)
+message_handler = ext.MessageHandler(ext.filters.MergedFilter(base_filter=ext.Filters.user(admin_id), and_filter=ext.Filters.text), get_message)
+location_handler = ext.MessageHandler(ext.filters.MergedFilter(base_filter=ext.Filters.user(admin_id), and_filter=ext.Filters.location), add_location)
 delete_command_handler = ext.CommandHandler('delete', delete_post)
 send_command_handler = ext.CommandHandler('send', send_post)
 draft_command_handler = ext.CommandHandler('draft', draft_post)
